@@ -152,14 +152,20 @@ export default class Video extends Component {
   render() {
     const resizeMode = this.props.resizeMode;
     const source = resolveAssetSource(this.props.source) || {};
+    const nextSource = resolveAssetSource(this.props.nextSource) || {};
 
-    let uri = source.uri || '';
+    let uri = source.uri, nextUri = nextSource.uri;
     if (uri && uri.match(/^\//)) {
       uri = `file://${uri}`;
+    }
+    if (nextUri && nextUri.match(/^\//)) {
+      nextUri = `file://${uri}`;
     }
 
     const isNetwork = !!(uri && uri.match(/^https?:/));
     const isAsset = !!(uri && uri.match(/^(assets-library|file|content|ms-appx|ms-appdata):/));
+    const nextIsNetwork = !!(nextUri && nextUri.match(/^https?:/));
+    const nextIsAsset = !!(nextUri && nextUri.match(/^(assets-library|file|content|ms-appx|ms-appdata):/));
 
     let nativeResizeMode;
     if (resizeMode === VideoResizeMode.stretch) {
@@ -180,9 +186,17 @@ export default class Video extends Component {
         uri,
         isNetwork,
         isAsset,
-        type: source.type || '',
+        type: source.type,
         mainVer: source.mainVer || 0,
         patchVer: source.patchVer || 0,
+      },
+      nextSrc: {
+        uri: nextUri,
+        isNetwork: nextIsNetwork,
+        isAsset: nextIsAsset,
+        type: nextSource.type,
+        mainVer: nextSource.mainVer || 0,
+        patchVer: nextSource.patchVer || 0,
       },
       onVideoLoadStart: this._onLoadStart,
       onVideoLoad: this._onLoad,
@@ -239,6 +253,7 @@ export default class Video extends Component {
 Video.propTypes = {
   /* Native only */
   src: PropTypes.object,
+  nextSrc: PropTypes.object,
   seek: PropTypes.number,
   fullscreen: PropTypes.bool,
   onVideoLoadStart: PropTypes.func,
@@ -255,6 +270,13 @@ Video.propTypes = {
 
   /* Wrapper component */
   source: PropTypes.oneOfType([
+    PropTypes.shape({
+      uri: PropTypes.string
+    }),
+    // Opaque type returned by require('./video.mp4')
+    PropTypes.number
+  ]),
+  nextSource: PropTypes.oneOfType([
     PropTypes.shape({
       uri: PropTypes.string
     }),

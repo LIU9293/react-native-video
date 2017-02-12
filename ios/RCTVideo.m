@@ -43,6 +43,7 @@ static NSString *const playbackRate = @"rate";
   BOOL _playInBackground;
   BOOL _playWhenInactive;
   NSString * _resizeMode;
+  NSDictionary *_nextSrc;
   BOOL _fullscreenPlayerPresented;
   UIViewController * _presentingViewController;
 }
@@ -117,7 +118,7 @@ static NSString *const playbackRate = @"rate";
     {
         return [playerItem seekableTimeRanges].firstObject.CMTimeRangeValue;
     }
-    
+
     return (kCMTimeRangeZero);
 }
 
@@ -145,17 +146,17 @@ static NSString *const playbackRate = @"rate";
 
 - (void)applicationWillResignActive:(NSNotification *)notification
 {
-  if (_playInBackground || _playWhenInactive || _paused) return;
+  //if (_playInBackground || _playWhenInactive || _paused) return;
 
-  [_player pause];
-  [_player setRate:0.0];
+  //[_player pause];
+  //[_player setRate:0.0];
 }
 
 - (void)applicationDidEnterBackground:(NSNotification *)notification
 {
   if (_playInBackground) {
     // Needed to play sound in background. See https://developer.apple.com/library/ios/qa/qa1668/_index.html
-    [_playerLayer setPlayer:nil];
+    //[_playerLayer setPlayer:nil];
   }
 }
 
@@ -163,7 +164,7 @@ static NSString *const playbackRate = @"rate";
 {
   [self applyModifiers];
   if (_playInBackground) {
-    [_playerLayer setPlayer:_player];
+    //[_playerLayer setPlayer:_player];
   }
 }
 
@@ -277,16 +278,17 @@ static NSString *const playbackRate = @"rate";
 
   dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
     //Perform on next run loop, otherwise onVideoLoadStart is nil
-    if(self.onVideoLoadStart) {
-      id uri = [source objectForKey:@"uri"];
-      id type = [source objectForKey:@"type"];
-      self.onVideoLoadStart(@{@"src": @{
-                                        @"uri": uri ? uri : [NSNull null],
-                                        @"type": type ? type : [NSNull null],
-                                        @"isNetwork": [NSNumber numberWithBool:(bool)[source objectForKey:@"isNetwork"]]},
-                                        @"target": self.reactTag
-                                        });
-    }
+      if(self.onVideoLoadStart) {
+            id uri = [source objectForKey:@"uri"];
+            id type = [source objectForKey:@"type"];
+            self.onVideoLoadStart(@{@"src": @{
+                   @"uri": uri ? uri : [NSNull null],
+                   @"type": type ? type : [NSNull null],
+                   @"isNetwork": [NSNumber numberWithBool:(bool)[source objectForKey:@"isNetwork"]]},
+                   @"target": self.reactTag
+            });
+     }
+
   });
 }
 
@@ -345,7 +347,7 @@ static NSString *const playbackRate = @"rate";
           } else
             orientation = @"portrait";
         }
-          
+
       if(self.onVideoLoad) {
           self.onVideoLoad(@{@"duration": [NSNumber numberWithFloat:duration],
                              @"currentTime": [NSNumber numberWithFloat:CMTimeGetSeconds(_playerItem.currentTime)],
@@ -430,15 +432,20 @@ static NSString *const playbackRate = @"rate";
 
 - (void)playerItemDidReachEnd:(NSNotification *)notification
 {
-  if(self.onVideoEnd) {
+  RCTLog(@"*** player item did reach end and will replace current item with: ");
+  RCTLog(@"%@", _nextSrc);
+  AVPlayerItem *nextItem = [self playerItemForSource:_nextSrc];
+  [_player replaceCurrentItemWithPlayerItem: nextItem];
+  /*[_player play];*/
+/*  if(self.onVideoEnd) {
       self.onVideoEnd(@{@"target": self.reactTag});
-  }
-
+  }*/
+    /*
   if (_repeat) {
     AVPlayerItem *item = [notification object];
     [item seekToTime:kCMTimeZero];
     [self applyModifiers];
-  }
+  }*/
 }
 
 #pragma mark - Prop setters
@@ -670,6 +677,11 @@ static NSString *const playbackRate = @"rate";
     [_playerLayer removeFromSuperlayer];
     [_playerLayer removeObserver:self forKeyPath:readyForDisplayKeyPath];
     _playerLayer = nil;
+}
+
+- (void)setNextSrc: (NSDictionary*)nextSrc
+{
+    _nextSrc = nextSrc;
 }
 
 #pragma mark - RCTVideoPlayerViewControllerDelegate
