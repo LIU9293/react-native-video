@@ -432,20 +432,17 @@ static NSString *const playbackRate = @"rate";
 
 - (void)playerItemDidReachEnd:(NSNotification *)notification
 {
-  RCTLog(@"*** player item did reach end and will replace current item with: ");
-  RCTLog(@"%@", _nextSrc);
+  //first delete the AVPlayerItem Observers;
+  [self removePlayerItemObservers];
+
+  //then get an new item and replace with current one
   AVPlayerItem *nextItem = [self playerItemForSource:_nextSrc];
   [_player replaceCurrentItemWithPlayerItem: nextItem];
-  /*[_player play];*/
-/*  if(self.onVideoEnd) {
-      self.onVideoEnd(@{@"target": self.reactTag});
-  }*/
-    /*
-  if (_repeat) {
-    AVPlayerItem *item = [notification object];
-    [item seekToTime:kCMTimeZero];
-    [self applyModifiers];
-  }*/
+  _playerItem = nextItem;
+  self.onVideoEnd(@{@"target": self.reactTag});
+
+  //third add the Observers and listeners;
+  [self addPlayerItemObservers];
 }
 
 #pragma mark - Prop setters
