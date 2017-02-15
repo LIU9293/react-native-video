@@ -249,6 +249,7 @@ static NSString *const playbackRate = @"rate";
 {
   [self removePlayerTimeObserver];
   [self removePlayerItemObservers];
+    RCTLog(@"%@", source);
   _playerItem = [self playerItemForSource:source];
   [self addPlayerItemObservers];
 
@@ -304,9 +305,7 @@ static NSString *const playbackRate = @"rate";
     [[NSURL alloc] initFileURLWithPath:[[NSBundle mainBundle] pathForResource:uri ofType:type]];
 
   if (isNetwork) {
-    NSArray *cookies = [[NSHTTPCookieStorage sharedHTTPCookieStorage] cookies];
-    AVURLAsset *asset = [AVURLAsset URLAssetWithURL:url options:@{AVURLAssetHTTPCookiesKey : cookies}];
-    return [AVPlayerItem playerItemWithAsset:asset];
+    return [AVPlayerItem playerItemWithURL:url];
   }
   else if (isAsset) {
     AVURLAsset *asset = [AVURLAsset URLAssetWithURL:url options:nil];
@@ -433,6 +432,7 @@ static NSString *const playbackRate = @"rate";
 - (void)playerItemDidReachEnd:(NSNotification *)notification
 {
   //first delete the AVPlayerItem Observers;
+  [self removePlayerTimeObserver];
   [self removePlayerItemObservers];
 
   //then get an new item and replace with current one
@@ -443,6 +443,26 @@ static NSString *const playbackRate = @"rate";
 
   //third add the Observers and listeners;
   [self addPlayerItemObservers];
+  const Float64 progressUpdateIntervalMS = _progressUpdateInterval / 1000;
+  __weak RCTVideo *weakSelf = self;
+  _timeObserver = [_player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(progressUpdateIntervalMS, NSEC_PER_SEC)
+                        queue:NULL
+                        usingBlock:^(CMTime time) { [weakSelf sendProgressUpdate]; }
+  ];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if(self.onVideoLoadStart) {
+            id uri = [_nextSrc objectForKey:@"uri"];
+            id type = [_nextSrc objectForKey:@"type"];
+            self.onVideoLoadStart(@{@"src": @{
+                @"uri": uri ? uri : [NSNull null],
+                @"type": type ? type : [NSNull null],
+                @"isNetwork": [NSNumber numberWithBool:(bool)[_nextSrc objectForKey:@"isNetwork"]]},
+                @"target": self.reactTag
+            });
+        }
+
+    });
+
 }
 
 #pragma mark - Prop setters
